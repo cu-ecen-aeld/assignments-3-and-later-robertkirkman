@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Script for assignment 1
 # Author: Robert Kirkman
 
