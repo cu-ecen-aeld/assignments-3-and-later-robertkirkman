@@ -31,6 +31,13 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    ret = fclose(file_p);
+    if (ret != 0) {
+        syslog(LOG_ERR, "failed to close file %s", DEST);
+        printf("failed to close file %s\n", DEST);
+        return 1;
+    }
+
     closelog();
     return 0;
 }
