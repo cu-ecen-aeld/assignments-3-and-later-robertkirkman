@@ -28,6 +28,7 @@ int main(int argc, char *argv[]) {
     if (ret < 0) {
         syslog(LOG_ERR, "failed to write \"%s\" to %s", DATA, DEST);
         printf("failed to write \"%s\" to %s\n", DATA, DEST);
+        return 1;
     }
 
     closelog();
