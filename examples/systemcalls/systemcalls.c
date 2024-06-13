@@ -1,5 +1,14 @@
 #include "systemcalls.h"
 
+// um idk if we are supposed to edit here but it says we have to put a call to
+// system() in the do_system() function and I cant compile
+// that unless I put includes here
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 /**
  * @param cmd the command to execute with system()
  * @return true if the command in @param cmd was executed
@@ -17,7 +26,12 @@ bool do_system(const char *cmd)
  *   or false() if it returned a failure
 */
 
-    return true;
+
+    if (system(cmd)) { // failed to invoke the program named in cmd (or no shell)
+        return false;
+    }
+
+    return true; // successful system call
 }
 
 /**
@@ -47,7 +61,7 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    // command[count] = command[count];
 
 /*
  * TODO:
@@ -58,10 +72,56 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
+    int status;
+    pid_t pid;
+
+    fflush(stdout);
+    pid = fork(); // when this is called, a second instruction pointer is
+    // spawned that starts executing code in this function starting from line
+    // 70 onward. the first instruction pointer continues as well, but
+    // with one variable different: the return value of fork(). In the
+    // parent process, pid will be the process id the OS assigned to the child
+    // process, and in the child process, pid will be zero.
+    if (pid == -1)
+    {
+        va_end(args);
+        return false; // failed to fork process
+    }
+
+    if (pid == 0) // the child process enters this codepath
+    {
+        execv(command[0], command); // child process replaces itself with the
+        // program at the full path in command[0] and passes the remaining
+        // strings in the command array to the program as arguments and
+        // stops when it reaches the null pointer at command[count]
+        // NOTE: the 1st element of the command array is automatically
+        // skipped when the 2nd argument is parsed! Docs don't mention that.
+        exit(-1); // the child process failed to replace itself with the callee
+    }
+
+    if (waitpid(pid, &status, 0) == -1) // parent process continues to this point,
+    // then waitpid() blocks execution until the OS process with the process id
+    // of the child process. if it returns -1, there was an error waiting for the process.
+    {
+        va_end(args);
+        return false;
+    }
+
+    if (!WIFEXITED(status)) // the child process crashed or was killed
+    {
+        va_end(args);
+        return false;
+    }
+
+    if (WEXITSTATUS(status)) // the child process exited with nonzero return value
+    {
+        va_end(args);
+        return false;
+    }
 
     va_end(args);
 
-    return true;
+    return true; // successful system call
 }
 
 /**
@@ -82,7 +142,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    // command[count] = command[count];
 
 
 /*
@@ -92,8 +152,52 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+    int status, pid, fd;
+
+    fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    if (fd < 0) { // failed to open file
+        return false;
+    }
+
+    fflush(stdout);
+    pid = fork();
+    if (pid == -1) {
+        close(fd);
+        va_end(args);
+        return false;
+    }
+
+    if (pid == 0) {// duplicate the opened file's descriptor to stdout's file descriptor,
+        // but only within the child process that will run the command
+        if (dup2(fd, 1) < 0)
+        {
+            exit(-1); // duplicating file descriptor failed
+        }
+        close(fd);
+        execv(command[0], command);
+        exit(-1);
+    }
+
+    close(fd);
+
+    if (waitpid(pid, &status, 0) == -1)
+    {
+        va_end(args);
+        return false;
+    }
+
+    if (!WIFEXITED(status))
+    {
+        va_end(args);
+        return false;
+    }
+
+    if (WEXITSTATUS(status))
+    {
+        va_end(args);
+        return false;
+    }
 
     va_end(args);
-
-    return true;
+    return true; // successful system call
 }
