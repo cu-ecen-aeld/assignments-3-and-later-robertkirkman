@@ -77,8 +77,8 @@ bool do_exec(int count, ...)
 
     fflush(stdout);
     pid = fork(); // when this is called, a second instruction pointer is
-    // spawned that starts executing code in this function starting from line
-    // 70 onward. the first instruction pointer continues as well, but
+    // spawned that starts executing code in this function starting from the call to fork()
+    // onward. the first instruction pointer continues as well, but
     // with one variable different: the return value of fork(). In the
     // parent process, pid will be the process id the OS assigned to the child
     // process, and in the child process, pid will be zero.
